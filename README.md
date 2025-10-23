@@ -20,9 +20,8 @@ All the APIs from this library are declared and thus usable in Swift and exposed
 These are the only two functions of this library besides the termios wrappers:
 
 ```c
-public func ios_register_pty(_ name: UnsafeMutableRawPointer, termp: UnsafeMutablePointer<termios>?, winp: UnsafeMutablePointer<winsize>?, stdin: Int32, stdout: Int32, stderr: Int32)
-
-public func ios_clear_pty(_ name: UnsafeMutableRawPointer)
+void ios_register_pty(void *name, struct termios *termp, struct winsize *winp, int stdin, int stdout, int stderr);
+void ios_clear_pty(void *name);
 ```
 
 Termios wrapper functions:
