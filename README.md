@@ -27,7 +27,6 @@ void ios_clear_pty(void *name);
 Termios wrapper functions:
 
 ```c
-
 int ios_tcgetwinsize(int fd, struct winsize *w);
 int ios_tcsetwinsize(int fd, const struct winsize *w);
 
@@ -38,7 +37,6 @@ int ios_tcsetattr(int fd, int optional_actions, const struct termios *termios_p)
 And functions that do nothing and return 0:
 
 ```c
-
 int ios_tcsendbreak(int fd, int duration);
 int ios_tcdrain(int fd);
 int ios_tcflush(int fd, int queue_selector);
