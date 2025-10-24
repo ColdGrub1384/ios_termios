@@ -7,10 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B5210F142EABC43500280D7B /* ios_termios.h in Headers */ = {isa = PBXBuildFile; fileRef = B5210F132EABC43500280D7B /* ios_termios.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		B547238F2EAADBE600FC3A69 /* ios_termios.swift in Sources */ = {isa = PBXBuildFile; fileRef = B547238E2EAADBE600FC3A69 /* ios_termios.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		B5210F132EABC43500280D7B /* ios_termios.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ios_termios.h; path = Sources/ios_termios/include/ios_termios.h; sourceTree = "<group>"; };
 		B54723842EAADBB300FC3A69 /* ios_termios.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = ios_termios.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		B547238E2EAADBE600FC3A69 /* ios_termios.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ios_termios.swift; path = Sources/ios_termios/ios_termios.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -30,6 +32,7 @@
 			isa = PBXGroup;
 			children = (
 				B547238E2EAADBE600FC3A69 /* ios_termios.swift */,
+				B5210F132EABC43500280D7B /* ios_termios.h */,
 				B54723852EAADBB300FC3A69 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -49,6 +52,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B5210F142EABC43500280D7B /* ios_termios.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
