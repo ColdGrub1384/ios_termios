@@ -8,7 +8,7 @@ The client is still responsible of opening the pipes. This library will not open
 
 To use this library, you must link this Swift Package or the framework compiled from the Xcode project to your app. This will make the necessary symbols available to the libraries that you want to compile.
 
-To compile a library using `termios`, you must include the `ios_termios.h` file either alongside `termios.h` or in place or `termios.h`. This will replace calls to termios functions with the appropriate wrapper.
+To compile a library using `termios`, you must include the `ios_termios.h` file either alongside `termios.h` or in place of `termios.h`. This will replace calls to termios functions with the appropriate wrapper.
 
 Before using this library, you must call `ios_register_pty` with any unique identifier, optionally, initial `termios` and `winsize` structures, followed by the file descriptors corresponding to the `stdin`, `stdout` and `stderr` streams managed by your terminal. If you don't do that, `termios` will raise `ENOTTY` and return `-1`.
 
