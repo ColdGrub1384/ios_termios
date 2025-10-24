@@ -28,6 +28,4 @@ extern int ios_tcflow(int fd, int action);
 #define tcgetwinsize ios_tcgetwinsize
 #define tcsetwinsize ios_tcsetwinsize
 
-#define tcflush ios_tcflush
-
 #endif

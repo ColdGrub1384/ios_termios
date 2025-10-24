@@ -2,7 +2,7 @@
 
 `ios_termios` is a wrapper of `tcgetattr`, `tcsetattr`, `tcgetwinsize` and `tcsetwinsize` for iOS. Because iOS doesn't let processes open pseudo terminals, this library manage their own. I'm trying to get `libedit` and the Python `readline` library to work with this wrapper.
 
-The client is still responsible of opening the pipes. This library will no open fake pseudo terminals for you but instead you register your file descriptors with the `ios_register_pty` function.
+The client is still responsible of opening the pipes. This library will not open fake pseudo terminals for you but instead you register your file descriptors with the `ios_register_pty` function.
 
 ## Usage
 
