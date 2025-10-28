@@ -10,7 +10,7 @@ To use this library, you must link this Swift Package or the framework compiled 
 
 To compile a library using `termios`, you must include the `ios_termios.h` file either alongside `termios.h` or in place of `termios.h`. This will replace calls to termios functions with the appropriate wrapper.
 
-Before using this library, you must call `ios_register_pty` with any unique identifier, optionally, initial `termios` and `winsize` structures, followed by the file descriptors corresponding to the `stdin`, `stdout` and `stderr` streams managed by your terminal. If you don't do that, `termios` will raise `ENOTTY` and return `-1`.
+Before using this library, you must call `ios_register_pty` with an unique identifier, then optionally initial `termios` and `winsize` structures, followed by the file descriptors corresponding to the `stdin`, `stdout` and `stderr` streams managed by your terminal. If you don't do that, `termios` will raise `ENOTTY` and return `-1`.
 
 After the program finished using the pty, clear its attributes from memory with the `ios_clear_pty` function.
 
@@ -20,8 +20,8 @@ All the APIs from this library are declared and thus usable in Swift and exposed
 These are the only two functions of this library besides the termios wrappers:
 
 ```c
-void ios_register_pty(void *name, struct termios *termp, struct winsize *winp, int stdin, int stdout, int stderr);
-void ios_clear_pty(void *name);
+void ios_register_pty(const char *name, struct termios *termp, struct winsize *winp, int stdin, int stdout, int stderr);
+void ios_clear_pty(const char *name);
 ```
 
 Termios wrapper functions:

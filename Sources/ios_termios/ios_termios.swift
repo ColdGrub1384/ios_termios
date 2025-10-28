@@ -3,11 +3,11 @@ import Foundation
 let queue = DispatchQueue.global(qos: .userInitiated)
 
 // Each termios and winsize is associated to a name, which is any type really
-nonisolated(unsafe) var _termios = [UnsafeMutableRawPointer:termios]()
-nonisolated(unsafe) var _winsize = [UnsafeMutableRawPointer:winsize]()
+nonisolated(unsafe) var _termios = [UnsafePointer<CChar>:termios]()
+nonisolated(unsafe) var _winsize = [UnsafePointer<CChar>:winsize]()
 
 // And each fake pty is associated to that same name
-nonisolated(unsafe) var ptys = [UnsafeMutableRawPointer:[Int32]]()
+nonisolated(unsafe) var ptys = [UnsafePointer<CChar>:[Int32]]()
 
 // Default termios values
 var defaultTermios: termios {
@@ -34,15 +34,14 @@ var defaultTermios: termios {
     )
 }
 
-func getName(fd: Int32) -> UnsafeMutableRawPointer? {
+func getName(fd: Int32) -> UnsafePointer<CChar>? {
     ptys.filter({ $0.value.contains(fd) }).first?.key
 }
 
 // MARK: - API
 
 @_cdecl("ios_register_pty")
-public func ios_register_pty(_ name: UnsafeMutableRawPointer, termp: UnsafeMutablePointer<termios>?, winp: UnsafeMutablePointer<winsize>?, stdin: Int32, stdout: Int32, stderr: Int32) {
-
+public func ios_register_pty(_ name: UnsafePointer<CChar>, termp: UnsafeMutablePointer<termios>?, winp: UnsafeMutablePointer<winsize>?, stdin: Int32, stdout: Int32, stderr: Int32) {
     queue.sync {
         ptys[name] = [stdin, stdout, stderr]
         _termios[name] = termp?.pointee
@@ -51,11 +50,14 @@ public func ios_register_pty(_ name: UnsafeMutableRawPointer, termp: UnsafeMutab
 }
 
 @_cdecl("ios_clear_pty")
-public func ios_clear_pty(_ name: UnsafeMutableRawPointer) {
+public func ios_clear_pty(_ name: UnsafePointer<CChar>) {
+    guard let _name = ptys.keys.first(where: { strcmp($0, name) == 0 }) else {
+        return
+    }
     queue.sync {
-        ptys[name] = nil
-        _termios[name] = nil
-        _winsize[name] = nil
+        ptys[_name] = nil
+        _termios[_name] = nil
+        _winsize[_name] = nil
     }
 }
 
