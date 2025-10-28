@@ -42,18 +42,15 @@ func getName(fd: Int32) -> UnsafePointer<CChar>? {
 
 public func registerPTY(name: String, termios: termios?, winsize: winsize?, stdin: Int32, stdout: Int32, stderr: Int32) {
 
-    var _termios = termios
-    var _winsize = winsize
-
     var _termp: UnsafeMutablePointer<termios>?
     var _winp: UnsafeMutablePointer<winsize>?
 
-    if var _termios {
-        _termp = .init(&_termios)
+    if var termios {
+        _termp = .init(&termios)
     }
 
-    if var _winsize {
-        _winp = .init(&_winsize)
+    if var winsize {
+        _winp = .init(&winsize)
     }
 
     ios_register_pty("\(name)", termp: _termp, winp: _winp, stdin: stdin, stdout: stdout, stderr: stderr)
