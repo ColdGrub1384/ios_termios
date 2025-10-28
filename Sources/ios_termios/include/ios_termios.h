@@ -3,8 +3,8 @@
 
 #include <termios.h>
 
-extern void ios_register_pty(void *name, struct termios *termp, struct winsize *winp, int stdin, int stdout, int stderr);
-extern void ios_clear_pty(void *name);
+extern void ios_register_pty(const char *name, struct termios *termp, struct winsize *winp, int stdin, int stdout, int stderr);
+extern void ios_clear_pty(const char *name);
 
 extern int ios_tcgetwinsize(int fd, struct winsize *w);
 extern int ios_tcsetwinsize(int fd, const struct winsize *w);

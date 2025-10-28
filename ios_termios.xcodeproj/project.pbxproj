@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		B547238F2EAADBE600FC3A69 /* ios_termios.swift in Sources */ = {isa = PBXBuildFile; fileRef = B547238E2EAADBE600FC3A69 /* ios_termios.swift */; };
-		B55CAD062EB1231500C54ECC /* ios_termios.h in Headers */ = {isa = PBXBuildFile; fileRef = B5210F132EABC43500280D7B /* ios_termios.h */; settings = {ATTRIBUTES = (Public, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -52,7 +51,6 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B55CAD062EB1231500C54ECC /* ios_termios.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -267,7 +265,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEFINES_MODULE = NO;
+				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = Y96PL6G497;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
@@ -321,7 +319,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEFINES_MODULE = NO;
+				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = Y96PL6G497;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
