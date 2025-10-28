@@ -16,7 +16,7 @@ After the program finished using the pty, clear its attributes from memory with 
 
 ## API
 
-This library is written in Swift and exposed to C. There are equivalent Swift functions that you can use in the frontend. The `ios_termios.h` header is not included in the framework because I get `ambiguous use of ...` errors so you have to manually include it if you are using it from C or Objective-C.
+This library is written in Swift and exposed to C. There are equivalent Swift functions that you can use in the frontend.
 
 ### Swift functions
 
