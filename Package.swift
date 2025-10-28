@@ -13,7 +13,6 @@ let package = Package(
     targets: [
         .target(
             name: "ios_termios",
-            publicHeadersPath: "include"
         ),
 
     ]
