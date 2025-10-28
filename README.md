@@ -16,7 +16,7 @@ After the program finished using the pty, clear its attributes from memory with 
 
 ## API
 
-This library is written in Swift and exposed functions to C. There are equivalent functions more suitable for Swift that can be used on the frontend.
+This library is written in Swift and exposed to C. There are equivalent Swift functions that you can use in the frontend.
 
 ### Swift functions
 
