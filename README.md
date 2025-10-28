@@ -21,7 +21,6 @@ This library is written in Swift and exposed to C. There are equivalent Swift fu
 ### Swift functions
 
 ```swift
-
 public func registerPTY(name: String, termios: termios?, winsize: winsize?, stdin: Int32, stdout: Int32, stderr: Int32)
 public func clearPTY(name: String)
 
