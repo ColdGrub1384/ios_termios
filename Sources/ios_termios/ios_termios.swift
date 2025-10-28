@@ -38,6 +38,69 @@ func getName(fd: Int32) -> UnsafePointer<CChar>? {
     ptys.filter({ $0.value.contains(fd) }).first?.key
 }
 
+// MARK: - Swift API
+
+public func registerPTY(name: String, termios: termios?, winsize: winsize?, stdin: Int32, stdout: Int32, stderr: Int32) {
+
+    var _termios = termios
+    var _winsize = winsize
+
+    var _termp: UnsafeMutablePointer<termios>?
+    var _winp: UnsafeMutablePointer<winsize>?
+
+    if var _termios {
+        _termp = .init(&_termios)
+    }
+
+    if var _winsize {
+        _winp = .init(&_winsize)
+    }
+
+    ios_register_pty("\(name)", termp: _termp, winp: _winp, stdin: stdin, stdout: stdout, stderr: stderr)
+}
+
+public func clearPTY(name: String) {
+    ios_clear_pty("\(name)")
+}
+
+public func getTermios(ptyName: String) -> termios? {
+    guard let fd = ptys.first(where: { strcmp($0.key, "\(ptyName)") == 0 })?.value.first else {
+        return nil
+    }
+
+    var term: termios!
+    _ = ios_tcgetattr(fd, &term)
+    return term
+}
+
+public func setTermios(ptyName: String, termios: termios) {
+    guard let fd = ptys.first(where: { strcmp($0.key, "\(ptyName)") == 0 })?.value.first else {
+        return
+    }
+
+    var _termios = termios
+    _ = ios_tcsetattr(fd, TCSANOW, &_termios)
+}
+
+public func getWinSize(ptyName: String) -> winsize? {
+    guard let fd = ptys.first(where: { strcmp($0.key, "\(ptyName)") == 0 })?.value.first else {
+        return nil
+    }
+
+    var win: winsize!
+    _ = ios_tcgetwinsize(fd, &win)
+    return win
+}
+
+public func setWinSize(ptyName: String, winsize: winsize) {
+    guard let fd = ptys.first(where: { strcmp($0.key, "\(ptyName)") == 0 })?.value.first else {
+        return
+    }
+
+    var _winsize = winsize
+    _ = ios_tcsetwinsize(fd, TCSANOW, &_winsize)
+}
+
 // MARK: - API
 
 @_cdecl("ios_register_pty")

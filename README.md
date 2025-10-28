@@ -16,8 +16,23 @@ After the program finished using the pty, clear its attributes from memory with 
 
 ## API
 
-All the APIs from this library are declared and thus usable in Swift and exposed to C.
-These are the only two functions of this library besides the termios wrappers:
+This library is written in Swift and exposed functions to C. There are equivalent functions more suitable for Swift that can be used on the frontend.
+
+### Swift functions
+
+```swift
+
+public func registerPTY(name: String, termios: termios?, winsize: winsize?, stdin: Int32, stdout: Int32, stderr: Int32)
+public func clearPTY(name: String)
+
+public func getTermios(ptyName: String) -> termios?
+public func setTermios(ptyName: String, termios: termios)
+
+public func getWinSize(ptyName: String) -> winsize?
+public func setWinSize(ptyName: String, winsize: winsize)
+```
+
+### C functions
 
 ```c
 void ios_register_pty(const char *name, struct termios *termp, struct winsize *winp, int stdin, int stdout, int stderr);
