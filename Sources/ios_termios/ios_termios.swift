@@ -2,12 +2,12 @@ import Foundation
 
 let queue = DispatchQueue.global(qos: .userInitiated)
 
-// Each termios and winsize is associated to a name, which is any type really
-nonisolated(unsafe) var _termios = [UnsafePointer<CChar>:termios]()
-nonisolated(unsafe) var _winsize = [UnsafePointer<CChar>:winsize]()
+// Each termios and winsize is associated to a name
+nonisolated(unsafe) var _termios = [String:termios]()
+nonisolated(unsafe) var _winsize = [String:winsize]()
 
 // And each fake pty is associated to that same name
-nonisolated(unsafe) var ptys = [UnsafePointer<CChar>:[Int32]]()
+nonisolated(unsafe) var ptys = [String:[Int32]]()
 
 // Default termios values
 var defaultTermios: termios {
@@ -34,7 +34,7 @@ var defaultTermios: termios {
     )
 }
 
-func getName(fd: Int32) -> UnsafePointer<CChar>? {
+func getName(fd: Int32) -> String? {
     ptys.filter({ $0.value.contains(fd) }).first?.key
 }
 
@@ -61,17 +61,17 @@ public func clearPTY(name: String) {
 }
 
 public func getTermios(ptyName: String) -> termios? {
-    guard let fd = ptys.first(where: { strcmp($0.key, "\(ptyName)") == 0 })?.value.first else {
+    guard let fd = ptys[ptyName]?.first else {
         return nil
     }
 
-    var term: termios!
+    var term = defaultTermios
     _ = ios_tcgetattr(fd, &term)
     return term
 }
 
 public func setTermios(ptyName: String, termios: termios) {
-    guard let fd = ptys.first(where: { strcmp($0.key, "\(ptyName)") == 0 })?.value.first else {
+    guard let fd = ptys[ptyName]?.first else {
         return
     }
 
@@ -80,17 +80,17 @@ public func setTermios(ptyName: String, termios: termios) {
 }
 
 public func getWinSize(ptyName: String) -> winsize? {
-    guard let fd = ptys.first(where: { strcmp($0.key, "\(ptyName)") == 0 })?.value.first else {
+    guard let fd = ptys[ptyName]?.first else {
         return nil
     }
 
-    var win: winsize!
+    var win = winsize(ws_row: 0, ws_col: 0, ws_xpixel: 0, ws_ypixel: 0)
     _ = ios_tcgetwinsize(fd, &win)
     return win
 }
 
 public func setWinSize(ptyName: String, winsize: winsize) {
-    guard let fd = ptys.first(where: { strcmp($0.key, "\(ptyName)") == 0 })?.value.first else {
+    guard let fd = ptys[ptyName]?.first else {
         return
     }
 
@@ -102,18 +102,17 @@ public func setWinSize(ptyName: String, winsize: winsize) {
 
 @_cdecl("ios_register_pty")
 public func ios_register_pty(_ name: UnsafePointer<CChar>, termp: UnsafeMutablePointer<termios>?, winp: UnsafeMutablePointer<winsize>?, stdin: Int32, stdout: Int32, stderr: Int32) {
+    let _name = String(cString: name)
     queue.sync {
-        ptys[name] = [stdin, stdout, stderr]
-        _termios[name] = termp?.pointee
-        _winsize[name] = winp?.pointee
+        ptys[_name] = [stdin, stdout, stderr]
+        _termios[_name] = termp?.pointee
+        _winsize[_name] = winp?.pointee
     }
 }
 
 @_cdecl("ios_clear_pty")
 public func ios_clear_pty(_ name: UnsafePointer<CChar>) {
-    guard let _name = ptys.keys.first(where: { strcmp($0, name) == 0 }) else {
-        return
-    }
+    let _name = String(cString: name)
     queue.sync {
         ptys[_name] = nil
         _termios[_name] = nil
@@ -161,12 +160,10 @@ public func ios_tcflow(_ fd: Int32, _ action: Int32) -> Int32 {
 
 @_cdecl("ios_tcgetattr")
 public func ios_tcgetattr(_ fd: Int32, _ termios: UnsafeMutablePointer<termios>!) -> Int32 {
-
     guard let name = getName(fd: fd) else {
         errno = ENOTTY
         return -1
     }
-
     termios.pointee = _termios[name] ?? defaultTermios
     return 0
 }
