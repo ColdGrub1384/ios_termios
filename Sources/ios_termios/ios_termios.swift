@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 
 let queue = DispatchQueue.global(qos: .userInitiated)
 
@@ -99,6 +100,42 @@ public func setWinSize(ptyName: String, winsize: winsize) {
 }
 
 // MARK: - API
+
+@_cdecl("ios_winsize_ioctl")
+public func ios_winsize_ioctl(_ fd: Int32, _ request: UInt, _ arg: UnsafeMutableRawPointer?) -> Int32 {
+
+    switch request {
+    case TIOCGWINSZ:
+        guard let name = getName(fd: fd) else {
+            errno = ENOTTY
+            return -1
+        }
+
+        var ws = getWinSize(ptyName: name)
+        guard let dest = arg else {
+            errno = EINVAL
+            return -1
+        }
+        dest.copyMemory(from: &ws, byteCount: MemoryLayout<winsize>.size)
+        return 0
+    case TIOCSWINSZ:
+        guard let src = arg else {
+            errno = EINVAL
+            return -1
+        }
+
+        guard let name = getName(fd: fd) else {
+            errno = ENOTTY
+            return -1
+        }
+
+        let ws = src.assumingMemoryBound(to: winsize.self)
+        setWinSize(ptyName: name, winsize: ws.pointee)
+        return 0
+    default:
+        return -1
+    }
+}
 
 @_cdecl("ios_register_pty")
 public func ios_register_pty(_ name: UnsafePointer<CChar>, termp: UnsafeMutablePointer<termios>?, winp: UnsafeMutablePointer<winsize>?, stdin: Int32, stdout: Int32, stderr: Int32) {
