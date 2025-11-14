@@ -61,6 +61,10 @@ public func clearPTY(name: String) {
     ios_clear_pty("\(name)")
 }
 
+public func isATTY(_ fd: Int32) -> Bool {
+    getName(fd: fd) != nil
+}
+
 public func getTermios(ptyName: String) -> termios? {
     guard let fd = ptys[ptyName]?.first else {
         return nil
@@ -196,17 +200,17 @@ public func ios_tcflow(_ fd: Int32, _ action: Int32) -> Int32 {
 }
 
 @_cdecl("ios_tcgetattr")
-public func ios_tcgetattr(_ fd: Int32, _ termios: UnsafeMutablePointer<termios>!) -> Int32 {
+public func ios_tcgetattr(_ fd: Int32, _ termios: UnsafeMutablePointer<termios>?) -> Int32 {
     guard let name = getName(fd: fd) else {
         errno = ENOTTY
         return -1
     }
-    termios.pointee = _termios[name] ?? defaultTermios
+    termios?.pointee = _termios[name] ?? defaultTermios
     return 0
 }
 
 @_cdecl("ios_tcsetattr")
-public func ios_tcsetattr(_ fd: Int32, _ optional_actions: Int32, _ termios_p: UnsafeMutablePointer<termios>!) -> Int32 {
+public func ios_tcsetattr(_ fd: Int32, _ optional_actions: Int32, _ termios_p: UnsafeMutablePointer<termios>?) -> Int32 {
 
     guard let name = getName(fd: fd) else {
         errno = ENOTTY
@@ -214,25 +218,25 @@ public func ios_tcsetattr(_ fd: Int32, _ optional_actions: Int32, _ termios_p: U
     }
 
     queue.sync {
-        _termios[name] = termios_p.pointee
+        _termios[name] = termios_p?.pointee
     }
     return 0
 }
 
 @_cdecl("ios_tcgetwinsize")
-public func ios_tcgetwinsize(_ fd: Int32, _ winsize_p: UnsafeMutablePointer<winsize>!) -> Int32 {
+public func ios_tcgetwinsize(_ fd: Int32, _ winsize_p: UnsafeMutablePointer<winsize>?) -> Int32 {
 
     guard let name = getName(fd: fd) else {
         errno = ENOTTY
         return -1
     }
 
-    winsize_p.pointee = _winsize[name] ?? winsize(ws_row: 0, ws_col: 0, ws_xpixel: 0, ws_ypixel: 0)
+    winsize_p?.pointee = _winsize[name] ?? winsize(ws_row: 0, ws_col: 0, ws_xpixel: 0, ws_ypixel: 0)
     return 0
 }
 
 @_cdecl("ios_tcsetwinsize")
-public func ios_tcsetwinsize(_ fd: Int32, _ optional_actions: Int32, _ winsize_p: UnsafeMutablePointer<winsize>!) -> Int32 {
+public func ios_tcsetwinsize(_ fd: Int32, _ optional_actions: Int32, _ winsize_p: UnsafeMutablePointer<winsize>?) -> Int32 {
 
     guard let name = getName(fd: fd) else {
         errno = ENOTTY
@@ -240,7 +244,7 @@ public func ios_tcsetwinsize(_ fd: Int32, _ optional_actions: Int32, _ winsize_p
     }
 
     queue.sync {
-        _winsize[name] = winsize_p.pointee
+        _winsize[name] = winsize_p?.pointee
     }
     return 0
 }

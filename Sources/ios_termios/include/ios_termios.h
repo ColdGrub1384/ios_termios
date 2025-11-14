@@ -4,6 +4,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <stddef.h>
 #include <sys/ioctl.h>
 
 extern void ios_register_pty(const char *name, struct termios *termp, struct winsize *winp, int stdin, int stdout, int stderr);
@@ -53,5 +54,7 @@ static inline int ios_ioctl(int fd, unsigned int request, ...) {
 #define tcsetwinsize ios_tcsetwinsize
 
 #define ioctl(fd, request, ...) ios_ioctl((fd), (request), ##__VA_ARGS__)
+
+#define isatty(fd) (ios_tcgetwinsize(fd, NULL) == 0)
 
 #endif
