@@ -89,6 +89,11 @@ static inline int ios_ioctl(int fd, unsigned int request, ...);
 #define tcgetwinsize ios_tcgetwinsize
 #define tcsetwinsize ios_tcsetwinsize
 
+#define dup ios_dup
+#define dup2 ios_dup2
+#define close ios_close
+
+#define fcntl(fd, request, ...) ios_fcntl((fd), (request), ##__VA_ARGS__)
 #define ioctl(fd, request, ...) ios_ioctl((fd), (request), ##__VA_ARGS__)
 
 #define isatty(fd) (ios_tcgetwinsize(fd, NULL) == 0)

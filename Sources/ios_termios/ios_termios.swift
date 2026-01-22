@@ -155,7 +155,44 @@ public func setWinSize(_ winsize: winsize, ptyName: String) throws {
     return try setWinSize(winsize, fd: fd)
 }
 
-// MARK: - API
+// MARK: - C API
+
+@_cdecl("ios_register_pty")
+public func ios_register_pty(_ name: UnsafePointer<CChar>, termp: UnsafeMutablePointer<termios>?, winp: UnsafeMutablePointer<winsize>?, stdin: Int32, stdout: Int32, stderr: Int32) {
+    let _name = String(cString: name)
+    queue.sync {
+        ptys[_name] = [stdin, stdout, stderr]
+        _termios[_name] = termp?.pointee
+        _winsize[_name] = winp?.pointee
+    }
+}
+
+@_cdecl("ios_register_child_pty")
+public func ios_register_child_pty(_ parentFd: Int32, childFd: Int32) -> Int32 {
+    guard let name = try? ptyName(fd: parentFd) else {
+        return 1
+    }
+    try? registerPTY(parentName: name, fd: childFd)
+    return 0
+}
+
+@_cdecl("ios_clear_pty")
+public func ios_clear_pty(_ name: UnsafePointer<CChar>) {
+    let _name = String(cString: name)
+    queue.sync {
+        ptys[_name] = nil
+        
+        let keysToRemove = childPtys.filter { $0.value == _name }.map { $0.key }
+        for key in keysToRemove {
+            childPtys.removeValue(forKey: key)
+        }
+            
+        _termios[_name] = nil
+        _winsize[_name] = nil
+    }
+}
+
+// MARK: - ioctl
 
 @_cdecl("ios_winsize_ioctl")
 public func ios_winsize_ioctl(_ fd: Int32, _ request: UInt, _ arg: UnsafeMutableRawPointer?) -> Int32 {
@@ -194,42 +231,37 @@ public func ios_winsize_ioctl(_ fd: Int32, _ request: UInt, _ arg: UnsafeMutable
     }
 }
 
-@_cdecl("ios_register_pty")
-public func ios_register_pty(_ name: UnsafePointer<CChar>, termp: UnsafeMutablePointer<termios>?, winp: UnsafeMutablePointer<winsize>?, stdin: Int32, stdout: Int32, stderr: Int32) {
-    let _name = String(cString: name)
-    queue.sync {
-        ptys[_name] = [stdin, stdout, stderr]
-        _termios[_name] = termp?.pointee
-        _winsize[_name] = winp?.pointee
+// MARK: - dup
+
+@_cdecl("ios_dup")
+public func ios_dup(_ fd: Int32) -> Int32 {
+    let duped = dup(fd)
+    if isATTY(fd) {
+        ios_register_child_pty(fd, duped)
     }
+    return duped
 }
 
-@_cdecl("ios_register_child_pty")
-public func ios_register_child_pty(_ parentFd: Int32, childFd: Int32) -> Int32 {
-    guard let name = try? ptyName(fd: parentFd) else {
-        return 1
+@_cdecl("ios_dup2")
+public func ios_dup2(_ fd: Int32, _ newfd: Int32) -> Int32 {
+    let duped = dup2(fd, newfd)
+    if isATTY(fd) {
+        ios_register_child_pty(fd, duped)
     }
-    try? registerPTY(parentName: name, fd: childFd)
-    return 0
+    return duped
 }
 
-@_cdecl("ios_clear_pty")
-public func ios_clear_pty(_ name: UnsafePointer<CChar>) {
-    let _name = String(cString: name)
-    queue.sync {
-        ptys[_name] = nil
-        
-        let keysToRemove = childPtys.filter { $0.value == _name }.map { $0.key }
-        for key in keysToRemove {
-            childPtys.removeValue(forKey: key)
-        }
-            
-        _termios[_name] = nil
-        _winsize[_name] = nil
+// MARK: - close
+
+@_cdecl("ios_close")
+public func ios_close(_ fd: Int32) -> Int32 {
+    if isATTY(fd), let name = try? ptyName(fd: fd) {
+        ios_clear_pty(name)
     }
+    return close(fd)
 }
 
-// MARK: - Wrappers
+// MARK: - termios
 
 @_cdecl("ios_ttyname_r")
 public func ios_ttyname_r( _ fd: Int32, _ buf: UnsafeMutablePointer<CChar>!, _ len: Int) -> Int32 {
@@ -338,3 +370,4 @@ public func ios_tcsetwinsize(_ fd: Int32, _ optional_actions: Int32, _ winsize_p
     }
     return 0
 }
+
