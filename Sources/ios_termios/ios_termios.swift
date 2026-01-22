@@ -168,7 +168,7 @@ public func ios_register_pty(_ name: UnsafePointer<CChar>, termp: UnsafeMutableP
 }
 
 @_cdecl("ios_register_child_pty")
-public func ios_register_child_pty(_ parentFd: Int32, childFd: Int32) -> Int32 {
+public func ios_register_child_pty(_ parentFd: Int32, _ childFd: Int32) -> Int32 {
     guard let name = try? ptyName(fd: parentFd) else {
         return 1
     }
@@ -237,7 +237,7 @@ public func ios_winsize_ioctl(_ fd: Int32, _ request: UInt, _ arg: UnsafeMutable
 public func ios_dup(_ fd: Int32) -> Int32 {
     let duped = dup(fd)
     if isATTY(fd) {
-        ios_register_child_pty(fd, duped)
+        _ = ios_register_child_pty(fd, duped)
     }
     return duped
 }
@@ -246,7 +246,7 @@ public func ios_dup(_ fd: Int32) -> Int32 {
 public func ios_dup2(_ fd: Int32, _ newfd: Int32) -> Int32 {
     let duped = dup2(fd, newfd)
     if isATTY(fd) {
-        ios_register_child_pty(fd, duped)
+        _ = ios_register_child_pty(fd, duped)
     }
     return duped
 }
