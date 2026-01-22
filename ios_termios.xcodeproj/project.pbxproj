@@ -13,6 +13,7 @@
 
 /* Begin PBXFileReference section */
 		B5210F132EABC43500280D7B /* ios_termios.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ios_termios.h; path = Sources/ios_termios/include/ios_termios.h; sourceTree = "<group>"; };
+		B52828C02F0377E600F4726C /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		B54723842EAADBB300FC3A69 /* ios_termios.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = ios_termios.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		B547238E2EAADBE600FC3A69 /* ios_termios.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ios_termios.swift; path = Sources/ios_termios/ios_termios.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -31,6 +32,7 @@
 		B547237A2EAADBB300FC3A69 = {
 			isa = PBXGroup;
 			children = (
+				B52828C02F0377E600F4726C /* README.md */,
 				B547238E2EAADBE600FC3A69 /* ios_termios.swift */,
 				B5210F132EABC43500280D7B /* ios_termios.h */,
 				B54723852EAADBB300FC3A69 /* Products */,
@@ -293,6 +295,7 @@
 				MARKETING_VERSION = 1.0;
 				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
+				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "ch.ada.ios-termios";
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SDKROOT = auto;

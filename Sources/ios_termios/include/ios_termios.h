@@ -1,6 +1,10 @@
 #ifndef ios_termios_h
 #define ios_termios_h
 
+#ifdef __APPLE__
+#define _TIME_H
+#endif
+
 #include <termios.h>
 #include <unistd.h>
 #include <stdarg.h>
@@ -8,7 +12,10 @@
 #include <sys/ioctl.h>
 
 extern void ios_register_pty(const char *name, struct termios *termp, struct winsize *winp, int stdin, int stdout, int stderr);
+extern int ios_register_child_pty(int parent_fd, int child_fd);
 extern void ios_clear_pty(const char *name);
+
+extern int ios_ttyname_r(int fd, char *buf, size_t size);
 
 extern int ios_tcgetwinsize(int fd, struct winsize *w);
 extern int ios_tcsetwinsize(int fd, const struct winsize *w);
@@ -41,6 +48,8 @@ static inline int ios_ioctl(int fd, unsigned int request, ...) {
 
     return _orig_ioctl(fd, request, arg);
 }
+
+#define ttyname_r ios_ttyname_r
 
 #define tcsendbreak ios_tcsendbreak
 #define tcdrain ios_tcdrain

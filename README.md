@@ -2,7 +2,7 @@
 
 `ios_termios` is a wrapper of `tcgetattr`, `tcsetattr`, `tcgetwinsize` and `tcsetwinsize` for iOS. It also wraps `ioctl` to work with `TIOCGWINSZ` and `TIOCSWINSZ` Because iOS doesn't let processes open pseudo terminals, this library manage their own. I'm trying to get `libedit` and the Python `readline` library to work with this wrapper.
 
-The client is still responsible of opening the pipes. This library will not open fake pseudo terminals for you but instead you register your file descriptors with the `ios_register_pty` function.
+The client is still responsible of opening the pipes. This library will not open fake pseudo terminals for you but instead you register your file descriptors with the `ios_register_pty` or `registerPTY` functions. For duplicated file descriptors, you can register a child file descriptor that will hold the same terminal state of its parent with one of the Swift variants of `registerPTY` or `ios_register_child_pty`. Children file descriptors are cleared when their parent is cleared.
 
 ## Usage
 
@@ -16,27 +16,49 @@ After the program finished using the pty, clear its attributes from memory with 
 
 ## API
 
-This library is written in Swift and exposed to C. There are equivalent Swift functions that you can use in the frontend.
+This library is written in Swift and exposed to C. There are equivalent Swift functions that you can use in the frontend. They accept both file descriptors and names plus they throw a `NoTTYError` error instead of returning -1.
 
-### Swift functions
+Throwable Swift functions throw a `NoTTYError` when the passed PTY name or file descriptor is not valid.
+
+### Swift interface
 
 ```swift
 import ios_termios
 
-public func registerPTY(name: String, termios: termios?, winsize: winsize?, stdin: Int32, stdout: Int32, stderr: Int32)
-public func clearPTY(name: String)
+enum NoTTYError: Error {
+    case fd(Int32)
+    case name(String)
+}
 
-public func getTermios(ptyName: String) -> termios?
-public func setTermios(ptyName: String, termios: termios)
+func registerPTY(name: String, termios: termios?, winsize: winsize?, stdin: Int32, stdout: Int32, stderr: Int32)
+func registerPTY(parentName: String, fd: Int32) throws
+func registerPTY(parent: Int32, fd: Int32) throws
 
-public func getWinSize(ptyName: String) -> winsize?
-public func setWinSize(ptyName: String, winsize: winsize)
+func clearPTY(name: String)
+func ptyName(fd: Int32) throws -> String
+
+func isATTY(_: Int32) -> Bool
+
+func getTermios(fd: Int32) throws -> termios
+func getTermios(ptyName: String) throws -> termios
+
+func setTermios(_: termios, fd: Int32) throws
+func setTermios(_: termios, ptyName: String) throws
+
+func getWinSize(fd: Int32) throws -> winsize
+func getWinSize(ptyName: String) throws -> winsize
+
+func setWinSize(_: winsize, fd: Int32) throws
+func setWinSize(_: winsize, ptyName: String) throws
 ```
 
 ### C functions
 
 ```c
+#include "ios_termios.h"
+
 void ios_register_pty(const char *name, struct termios *termp, struct winsize *winp, int stdin, int stdout, int stderr);
+int ios_register_child_pty(int parent_fd, int child_fd);
 void ios_clear_pty(const char *name);
 
 int ios_tcgetwinsize(int fd, struct winsize *w);
@@ -57,10 +79,9 @@ static inline int ios_ioctl(int fd, unsigned int request, ...);
 ### Replacement macros
 
 ```c
-#define tcsendbreak ios_tcsendbreak
-#define tcdrain ios_tcdrain
-#define tcflush ios_tcflush
-#define tcflow ios_tcflow
+#include "ios_termios.h"
+
+#define ttyname ios_ttyname
 
 #define tcgetattr ios_tcgetattr
 #define tcsetattr ios_tcsetattr
@@ -71,4 +92,10 @@ static inline int ios_ioctl(int fd, unsigned int request, ...);
 #define ioctl(fd, request, ...) ios_ioctl((fd), (request), ##__VA_ARGS__)
 
 #define isatty(fd) (ios_tcgetwinsize(fd, NULL) == 0)
+
+// Not implemented
+#define tcsendbreak ios_tcsendbreak
+#define tcdrain ios_tcdrain
+#define tcflush ios_tcflush
+#define tcflow ios_tcflow
 ```

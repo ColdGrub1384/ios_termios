@@ -10,6 +10,9 @@ nonisolated(unsafe) var _winsize = [String:winsize]()
 // And each fake pty is associated to that same name
 nonisolated(unsafe) var ptys = [String:[Int32]]()
 
+// Child PTYs (map each child fd to its parent's name)
+nonisolated(unsafe) var childPtys = [Int32:String]()
+
 // Default termios values
 var defaultTermios: termios {
     var cc = [cc_t](repeating: 0, count: 20)
@@ -35,11 +38,24 @@ var defaultTermios: termios {
     )
 }
 
-func getName(fd: Int32) -> String? {
-    ptys.filter({ $0.value.contains(fd) }).first?.key
+// MARK: - Swift API
+
+enum NoTTYError: Error {
+
+    case fd(Int32)
+
+    case name(String)
 }
 
-// MARK: - Swift API
+public func ptyName(fd: Int32) throws -> String {
+    if let name = ptys.filter({ $0.value.contains(fd) }).first?.key {
+        return name
+    } else if let name = childPtys[fd] {
+        return name
+    } else {
+        throw NoTTYError.fd(fd)
+    }
+}
 
 public func registerPTY(name: String, termios: termios?, winsize: winsize?, stdin: Int32, stdout: Int32, stderr: Int32) {
 
@@ -57,50 +73,86 @@ public func registerPTY(name: String, termios: termios?, winsize: winsize?, stdi
     ios_register_pty("\(name)", termp: _termp, winp: _winp, stdin: stdin, stdout: stdout, stderr: stderr)
 }
 
+public func registerPTY(parentName: String, fd: Int32) throws {
+
+    if ptys[parentName] == nil {
+        throw NoTTYError.name(parentName)
+    }
+
+    childPtys[fd] = parentName
+}
+
+public func registerPTY(parent: Int32, fd: Int32) throws {
+    let name = try ptyName(fd: parent)
+    try registerPTY(parentName: name, fd: fd)
+}
+
 public func clearPTY(name: String) {
     ios_clear_pty("\(name)")
 }
 
 public func isATTY(_ fd: Int32) -> Bool {
-    getName(fd: fd) != nil
+    (try? ptyName(fd: fd)) != nil
 }
 
-public func getTermios(ptyName: String) -> termios? {
-    guard let fd = ptys[ptyName]?.first else {
-        return nil
-    }
-
+public func getTermios(fd: Int32) throws -> termios {
     var term = defaultTermios
-    _ = ios_tcgetattr(fd, &term)
-    return term
+    if ios_tcgetattr(fd, &term) == 0 {
+        return term
+    } else {
+        throw NoTTYError.fd(fd)
+    }
 }
 
-public func setTermios(ptyName: String, termios: termios) {
+public func getTermios(ptyName: String) throws -> termios {
     guard let fd = ptys[ptyName]?.first else {
-        return
+        throw NoTTYError.name(ptyName)
     }
+    return try getTermios(fd: fd)
+}
 
+public func setTermios(_ termios: termios, fd: Int32) throws {
     var _termios = termios
-    _ = ios_tcsetattr(fd, TCSANOW, &_termios)
+    if ios_tcsetattr(fd, TCSANOW, &_termios) != 0 {
+        throw NoTTYError.fd(fd)
+    }
 }
 
-public func getWinSize(ptyName: String) -> winsize? {
+public func setTermios(_ termios: termios, ptyName: String) throws {
     guard let fd = ptys[ptyName]?.first else {
-        return nil
+        throw NoTTYError.name(ptyName)
     }
+    try setTermios(termios, fd: fd)
+}
 
+public func getWinSize(fd: Int32) throws -> winsize {
     var win = winsize(ws_row: 0, ws_col: 0, ws_xpixel: 0, ws_ypixel: 0)
-    _ = ios_tcgetwinsize(fd, &win)
-    return win
+    if ios_tcgetwinsize(fd, &win) == 0 {
+        return win
+    } else {
+        throw NoTTYError.fd(fd)
+    }
 }
 
-public func setWinSize(ptyName: String, winsize: winsize) {
+public func getWinSize(ptyName: String) throws -> winsize {
     guard let fd = ptys[ptyName]?.first else {
-        return
+        throw NoTTYError.name(ptyName)
     }
+    return try getWinSize(fd: fd)
+}
 
+public func setWinSize(_ winsize: winsize, fd: Int32) throws {
     var _winsize = winsize
-    _ = ios_tcsetwinsize(fd, TCSANOW, &_winsize)
+    if ios_tcsetwinsize(fd, TCSANOW, &_winsize) != 0 {
+        throw NoTTYError.fd(fd)
+    }
+}
+
+public func setWinSize(_ winsize: winsize, ptyName: String) throws {
+    guard let fd = ptys[ptyName]?.first else {
+        throw NoTTYError.name(ptyName)
+    }
+    return try setWinSize(winsize, fd: fd)
 }
 
 // MARK: - API
@@ -110,17 +162,18 @@ public func ios_winsize_ioctl(_ fd: Int32, _ request: UInt, _ arg: UnsafeMutable
 
     switch request {
     case TIOCGWINSZ:
-        guard let name = getName(fd: fd) else {
+        do {
+            var ws = try getWinSize(fd: fd)
+
+            guard let dest = arg else {
+                errno = EINVAL
+                return -1
+            }
+            dest.copyMemory(from: &ws, byteCount: MemoryLayout<winsize>.size)
+        } catch {
             errno = ENOTTY
             return -1
         }
-
-        var ws = getWinSize(ptyName: name)
-        guard let dest = arg else {
-            errno = EINVAL
-            return -1
-        }
-        dest.copyMemory(from: &ws, byteCount: MemoryLayout<winsize>.size)
         return 0
     case TIOCSWINSZ:
         guard let src = arg else {
@@ -128,14 +181,14 @@ public func ios_winsize_ioctl(_ fd: Int32, _ request: UInt, _ arg: UnsafeMutable
             return -1
         }
 
-        guard let name = getName(fd: fd) else {
+        do {
+            let ws = src.assumingMemoryBound(to: winsize.self)
+            try setWinSize(ws.pointee, fd: fd)
+            return 0
+        } catch {
             errno = ENOTTY
             return -1
         }
-
-        let ws = src.assumingMemoryBound(to: winsize.self)
-        setWinSize(ptyName: name, winsize: ws.pointee)
-        return 0
     default:
         return -1
     }
@@ -151,11 +204,26 @@ public func ios_register_pty(_ name: UnsafePointer<CChar>, termp: UnsafeMutableP
     }
 }
 
+@_cdecl("ios_register_child_pty")
+public func ios_register_child_pty(_ parentFd: Int32, childFd: Int32) -> Int32 {
+    guard let name = try? ptyName(fd: parentFd) else {
+        return 1
+    }
+    try? registerPTY(parentName: name, fd: childFd)
+    return 0
+}
+
 @_cdecl("ios_clear_pty")
 public func ios_clear_pty(_ name: UnsafePointer<CChar>) {
     let _name = String(cString: name)
     queue.sync {
         ptys[_name] = nil
+        
+        let keysToRemove = childPtys.filter { $0.value == _name }.map { $0.key }
+        for key in keysToRemove {
+            childPtys.removeValue(forKey: key)
+        }
+            
         _termios[_name] = nil
         _winsize[_name] = nil
     }
@@ -163,9 +231,31 @@ public func ios_clear_pty(_ name: UnsafePointer<CChar>) {
 
 // MARK: - Wrappers
 
+@_cdecl("ios_ttyname_r")
+public func ios_ttyname_r( _ fd: Int32, _ buf: UnsafeMutablePointer<CChar>!, _ len: Int) -> Int32 {
+    guard let buf = buf, len > 0 else {
+        return EINVAL
+    }
+
+    guard let name = try? ptyName(fd: fd) else {
+        return ENOTTY
+    }
+
+    return name.withCString { cstr in
+        let needed = strlen(cstr) + 1
+
+        if needed > len {
+            return ERANGE
+        }
+
+        memcpy(buf, cstr, needed)
+        return 0
+    }
+}
+
 @_cdecl("ios_tcsendbreak")
 public func ios_tcsendbreak(_ fd: Int32, _ duration: Int32) -> Int32 {
-    guard getName(fd: fd) != nil else {
+    guard (try? ptyName(fd: fd)) != nil else {
         errno = ENOTTY
         return -1
     }
@@ -174,7 +264,7 @@ public func ios_tcsendbreak(_ fd: Int32, _ duration: Int32) -> Int32 {
 
 @_cdecl("ios_tcdrain")
 public func ios_tcdrain(_ fd: Int32) -> Int32 {
-    guard getName(fd: fd) != nil else {
+    guard (try? ptyName(fd: fd)) != nil else {
         errno = ENOTTY
         return -1
     }
@@ -183,7 +273,7 @@ public func ios_tcdrain(_ fd: Int32) -> Int32 {
 
 @_cdecl("ios_tcflush")
 public func ios_tcflush(_ fd: Int32, _ queue_selector: Int32) -> Int32 {
-    guard getName(fd: fd) != nil else {
+    guard (try? ptyName(fd: fd)) != nil else {
         errno = ENOTTY
         return -1
     }
@@ -192,7 +282,7 @@ public func ios_tcflush(_ fd: Int32, _ queue_selector: Int32) -> Int32 {
 
 @_cdecl("ios_tcflow")
 public func ios_tcflow(_ fd: Int32, _ action: Int32) -> Int32 {
-    guard getName(fd: fd) != nil else {
+    guard (try? ptyName(fd: fd)) != nil else {
         errno = ENOTTY
         return -1
     }
@@ -201,7 +291,7 @@ public func ios_tcflow(_ fd: Int32, _ action: Int32) -> Int32 {
 
 @_cdecl("ios_tcgetattr")
 public func ios_tcgetattr(_ fd: Int32, _ termios: UnsafeMutablePointer<termios>?) -> Int32 {
-    guard let name = getName(fd: fd) else {
+    guard let name = try? ptyName(fd: fd) else {
         errno = ENOTTY
         return -1
     }
@@ -212,7 +302,7 @@ public func ios_tcgetattr(_ fd: Int32, _ termios: UnsafeMutablePointer<termios>?
 @_cdecl("ios_tcsetattr")
 public func ios_tcsetattr(_ fd: Int32, _ optional_actions: Int32, _ termios_p: UnsafeMutablePointer<termios>?) -> Int32 {
 
-    guard let name = getName(fd: fd) else {
+    guard let name = try? ptyName(fd: fd) else {
         errno = ENOTTY
         return -1
     }
@@ -226,7 +316,7 @@ public func ios_tcsetattr(_ fd: Int32, _ optional_actions: Int32, _ termios_p: U
 @_cdecl("ios_tcgetwinsize")
 public func ios_tcgetwinsize(_ fd: Int32, _ winsize_p: UnsafeMutablePointer<winsize>?) -> Int32 {
 
-    guard let name = getName(fd: fd) else {
+    guard let name = try? ptyName(fd: fd) else {
         errno = ENOTTY
         return -1
     }
@@ -238,7 +328,7 @@ public func ios_tcgetwinsize(_ fd: Int32, _ winsize_p: UnsafeMutablePointer<wins
 @_cdecl("ios_tcsetwinsize")
 public func ios_tcsetwinsize(_ fd: Int32, _ optional_actions: Int32, _ winsize_p: UnsafeMutablePointer<winsize>?) -> Int32 {
 
-    guard let name = getName(fd: fd) else {
+    guard let name = try? ptyName(fd: fd) else {
         errno = ENOTTY
         return -1
     }
