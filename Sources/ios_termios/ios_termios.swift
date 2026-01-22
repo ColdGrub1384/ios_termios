@@ -255,7 +255,7 @@ public func ios_dup2(_ fd: Int32, _ newfd: Int32) -> Int32 {
 
 @_cdecl("ios_close")
 public func ios_close(_ fd: Int32) -> Int32 {
-    if isATTY(fd), let name = try? ptyName(fd: fd) {
+    if isATTY(fd), let name = try? ptyName(fd: fd), childPtys[fd] == nil {
         ios_clear_pty(name)
     }
     return close(fd)
