@@ -192,6 +192,25 @@ public func ios_clear_pty(_ name: UnsafePointer<CChar>) {
     }
 }
 
+@_cdecl("ios_fds_from_ttyname_r")
+public func ios_fds_from_ttyname_r(
+    _ name: UnsafePointer<CChar>,
+    _ out: UnsafeMutablePointer<Int32>
+) -> Int32 {
+
+    let key = String(cString: name)
+
+    guard let arr = ptys[key], arr.count == 3 else {
+        return -1
+    }
+
+    out[0] = arr[0]
+    out[1] = arr[1]
+    out[2] = arr[2]
+
+    return 0
+}
+
 // MARK: - ioctl
 
 @_cdecl("ios_winsize_ioctl")

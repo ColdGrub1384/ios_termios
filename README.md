@@ -61,6 +61,8 @@ void ios_register_pty(const char *name, struct termios *termp, struct winsize *w
 int ios_register_child_pty(int parent_fd, int child_fd);
 void ios_clear_pty(const char *name);
 
+int ios_fds_from_ttyname_r(const char *name, int out_fds[3]);
+
 int ios_tcgetwinsize(int fd, struct winsize *w);
 int ios_tcsetwinsize(int fd, const struct winsize *w);
 

@@ -20,6 +20,7 @@ extern void ios_register_pty(const char *name, struct termios *termp, struct win
 extern int ios_register_child_pty(int parent_fd, int child_fd);
 extern void ios_clear_pty(const char *name);
 
+extern int ios_fds_from_ttyname_r(const char *name, int out_fds[3]);
 extern int ios_ttyname_r(int fd, char *buf, size_t size);
 
 extern int ios_tcgetwinsize(int fd, struct winsize *w);
