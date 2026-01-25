@@ -69,11 +69,28 @@ public func ptyName(fd: Int32) throws -> String {
     }
 }
 
-public func registerPTY(name: String, termios: termios?, winsize: winsize?, stdin: Int32, stdout: Int32, stderr: Int32) {
+public func registerPTY(
+    name: String,
+    termios: termios?,
+    winsize: winsize?,
+    stdin: Int32,
+    stdout: Int32,
+    stderr: Int32
+) {
     name.withCString { cname in
-        var t = termios
-        var w = winsize
-        ios_register_pty(cname, termp: t != nil ? &t! : nil, winp: w != nil ? &w! : nil, stdin: stdin, stdout: stdout, stderr: stderr)
+        if var t = termios {
+            if var w = winsize {
+                ios_register_pty(cname, termp: &t, winp: &w, stdin: stdin, stdout: stdout, stderr: stderr)
+            } else {
+                ios_register_pty(cname, termp: &t, winp: nil, stdin: stdin, stdout: stdout, stderr: stderr)
+            }
+        } else {
+            if var w = winsize {
+                ios_register_pty(cname, termp: nil, winp: &w, stdin: stdin, stdout: stdout, stderr: stderr)
+            } else {
+                ios_register_pty(cname, termp: nil, winp: nil, stdin: stdin, stdout: stdout, stderr: stderr)
+            }
+        }
     }
 }
 
