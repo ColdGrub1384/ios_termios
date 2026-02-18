@@ -1,10 +1,57 @@
 import Foundation
 import Darwin
 
-// SERIAL queue used as a mutex for all shared state
-private let ptyQueue = DispatchQueue(label: "pty.state.lock")
+// Mutex for all shared state.
+// We use a pthread_mutex instead of a serial queue because DispatchQueue.sync is not signal-safe.
+// We also block SIGWINCH while holding the lock to prevent deadlocks when a signal handler
+// tries to acquire the same lock.
+private var ptyLock: pthread_mutex_t = {
+    var mutex = pthread_mutex_t()
+    var attr = pthread_mutexattr_t()
+    pthread_mutexattr_init(&attr)
+    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE)
+    pthread_mutex_init(&mutex, &attr)
+    pthread_mutexattr_destroy(&attr)
+    return mutex
+}()
 
-// MARK: - Shared State (ONLY touch inside ptyQueue)
+private func withLock<T>(_ block: () throws -> T) rethrows -> T {
+    var mask = sigset_t()
+    var oldMask = sigset_t()
+    sigemptyset(&mask)
+    sigaddset(&mask, SIGWINCH)
+    
+    // Block SIGWINCH
+    pthread_sigmask(SIG_BLOCK, &mask, &oldMask)
+    
+    pthread_mutex_lock(&ptyLock)
+    defer {
+        pthread_mutex_unlock(&ptyLock)
+        // Restore signal mask
+        pthread_sigmask(SIG_SETMASK, &oldMask, nil)
+    }
+    return try block()
+}
+
+private func withLock<T>(_ block: () -> T) -> T {
+    var mask = sigset_t()
+    var oldMask = sigset_t()
+    sigemptyset(&mask)
+    sigaddset(&mask, SIGWINCH)
+    
+    // Block SIGWINCH
+    pthread_sigmask(SIG_BLOCK, &mask, &oldMask)
+    
+    pthread_mutex_lock(&ptyLock)
+    defer {
+        pthread_mutex_unlock(&ptyLock)
+        // Restore signal mask
+        pthread_sigmask(SIG_SETMASK, &oldMask, nil)
+    }
+    return block()
+}
+
+// MARK: - Shared State
 
 // Each termios and winsize is associated to a name
 nonisolated(unsafe) var _termios = [String:termios]()
@@ -64,7 +111,7 @@ private func _ptyName_unlocked(fd: Int32) throws -> String {
 // MARK: - Swift API (thread-safe)
 
 public func ptyName(fd: Int32) throws -> String {
-    try ptyQueue.sync {
+    try withLock {
         try _ptyName_unlocked(fd: fd)
     }
 }
@@ -95,7 +142,7 @@ public func registerPTY(
 }
 
 public func registerPTY(parentName: String, fd: Int32) throws {
-    try ptyQueue.sync {
+    try withLock {
         guard ptys[parentName] != nil else {
             throw NoTTYError.name(parentName)
         }
@@ -126,7 +173,7 @@ public func getTermios(fd: Int32) throws -> termios {
 }
 
 public func getTermios(ptyName: String) throws -> termios {
-    let fd: Int32 = try ptyQueue.sync {
+    let fd: Int32 = try withLock {
         guard let fd = ptys[ptyName]?.first else { throw NoTTYError.name(ptyName) }
         return fd
     }
@@ -141,7 +188,7 @@ public func setTermios(_ termios: termios, fd: Int32) throws {
 }
 
 public func setTermios(_ termios: termios, ptyName: String) throws {
-    let fd: Int32 = try ptyQueue.sync {
+    let fd: Int32 = try withLock {
         guard let fd = ptys[ptyName]?.first else { throw NoTTYError.name(ptyName) }
         return fd
     }
@@ -158,7 +205,7 @@ public func getWinSize(fd: Int32) throws -> winsize {
 }
 
 public func getWinSize(ptyName: String) throws -> winsize {
-    let fd: Int32 = try ptyQueue.sync {
+    let fd: Int32 = try withLock {
         guard let fd = ptys[ptyName]?.first else { throw NoTTYError.name(ptyName) }
         return fd
     }
@@ -173,7 +220,7 @@ public func setWinSize(_ winsize: winsize, fd: Int32) throws {
 }
 
 public func setWinSize(_ winsize: winsize, ptyName: String) throws {
-    let fd: Int32 = try ptyQueue.sync {
+    let fd: Int32 = try withLock {
         guard let fd = ptys[ptyName]?.first else { throw NoTTYError.name(ptyName) }
         return fd
     }
@@ -185,7 +232,7 @@ public func setWinSize(_ winsize: winsize, ptyName: String) throws {
 @_cdecl("ios_register_pty")
 public func ios_register_pty(_ name: UnsafePointer<CChar>, termp: UnsafeMutablePointer<termios>?, winp: UnsafeMutablePointer<winsize>?, stdin: Int32, stdout: Int32, stderr: Int32) {
     let n = String(cString: name)
-    ptyQueue.sync {
+    withLock {
         ptys[n] = [stdin, stdout, stderr]
         _termios[n] = termp?.pointee
         _winsize[n] = winp?.pointee
@@ -194,7 +241,7 @@ public func ios_register_pty(_ name: UnsafePointer<CChar>, termp: UnsafeMutableP
 
 @_cdecl("ios_register_child_pty")
 public func ios_register_child_pty(_ parentFd: Int32, _ childFd: Int32) -> Int32 {
-    ptyQueue.sync {
+    withLock {
         guard let name = try? _ptyName_unlocked(fd: parentFd) else { return 1 }
         childPtys[childFd] = name
         return 0
@@ -204,7 +251,7 @@ public func ios_register_child_pty(_ parentFd: Int32, _ childFd: Int32) -> Int32
 @_cdecl("ios_clear_pty")
 public func ios_clear_pty(_ name: UnsafePointer<CChar>) {
     let n = String(cString: name)
-    ptyQueue.sync {
+    withLock {
         ptys[n] = nil
         _termios[n] = nil
         _winsize[n] = nil
@@ -216,7 +263,7 @@ public func ios_clear_pty(_ name: UnsafePointer<CChar>) {
 @_cdecl("ios_fds_from_ttyname_r")
 public func ios_fds_from_ttyname_r(_ name: UnsafePointer<CChar>, _ out: UnsafeMutablePointer<Int32>) -> Int32 {
     let n = String(cString: name)
-    return ptyQueue.sync {
+    return withLock {
         guard let arr = ptys[n], arr.count == 3 else { return -1 }
         out[0] = arr[0]
         out[1] = arr[1]
@@ -263,7 +310,7 @@ public func ios_dup2(_ fd: Int32, _ newfd: Int32) -> Int32 {
 
 @_cdecl("ios_close")
 public func ios_close(_ fd: Int32) -> Int32 {
-    ptyQueue.sync { childPtys[fd] = nil }
+    withLock { childPtys[fd] = nil }
     return close(fd)
 }
 
@@ -310,7 +357,7 @@ public func ios_tcflow(_ fd: Int32, _ action: Int32) -> Int32 {
 public func ios_tcgetattr(_ fd: Int32, _ termios_p: UnsafeMutablePointer<termios>?) -> Int32 {
     let name: String
     do { name = try ptyName(fd: fd) } catch { errno = ENOTTY; return -1 }
-    let t = ptyQueue.sync { _termios[name] ?? defaultTermios }
+    let t = withLock { _termios[name] ?? defaultTermios }
     termios_p?.pointee = t
     return 0
 }
@@ -319,7 +366,7 @@ public func ios_tcgetattr(_ fd: Int32, _ termios_p: UnsafeMutablePointer<termios
 public func ios_tcsetattr(_ fd: Int32, _ optional_actions: Int32, _ termios_p: UnsafeMutablePointer<termios>?) -> Int32 {
     let name: String
     do { name = try ptyName(fd: fd) } catch { errno = ENOTTY; return -1 }
-    ptyQueue.sync { _termios[name] = termios_p?.pointee }
+    withLock { _termios[name] = termios_p?.pointee }
     return 0
 }
 
@@ -327,7 +374,7 @@ public func ios_tcsetattr(_ fd: Int32, _ optional_actions: Int32, _ termios_p: U
 public func ios_tcgetwinsize(_ fd: Int32, _ winsize_p: UnsafeMutablePointer<winsize>?) -> Int32 {
     let name: String
     do { name = try ptyName(fd: fd) } catch { errno = ENOTTY; return -1 }
-    let w = ptyQueue.sync { _winsize[name] ?? winsize(ws_row: 0, ws_col: 0, ws_xpixel: 0, ws_ypixel: 0) }
+    let w = withLock { _winsize[name] ?? winsize(ws_row: 0, ws_col: 0, ws_xpixel: 0, ws_ypixel: 0) }
     winsize_p?.pointee = w
     return 0
 }
@@ -336,6 +383,6 @@ public func ios_tcgetwinsize(_ fd: Int32, _ winsize_p: UnsafeMutablePointer<wins
 public func ios_tcsetwinsize(_ fd: Int32, _ optional_actions: Int32, _ winsize_p: UnsafeMutablePointer<winsize>?) -> Int32 {
     let name: String
     do { name = try ptyName(fd: fd) } catch { errno = ENOTTY; return -1 }
-    ptyQueue.sync { _winsize[name] = winsize_p?.pointee }
+    withLock { _winsize[name] = winsize_p?.pointee }
     return 0
 }
