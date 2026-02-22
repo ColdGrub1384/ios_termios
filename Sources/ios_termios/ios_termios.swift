@@ -3,14 +3,14 @@ import Darwin
 
 // Mutex for all shared state.
 // We use a pthread_mutex instead of a serial queue because DispatchQueue.sync is not signal-safe.
-// We also block SIGWINCH while holding the lock to prevent deadlocks when a signal handler
-// tries to acquire the same lock.
-private var ptyLock: pthread_mutex_t = {
-    var mutex = pthread_mutex_t()
+// We also block ALL signals while holding the lock to prevent exclusivity violations
+// when a signal handler tries to access the same state.
+nonisolated(unsafe) private let ptyLock: UnsafeMutablePointer<pthread_mutex_t> = {
+    let mutex = UnsafeMutablePointer<pthread_mutex_t>.allocate(capacity: 1)
     var attr = pthread_mutexattr_t()
     pthread_mutexattr_init(&attr)
     pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE)
-    pthread_mutex_init(&mutex, &attr)
+    pthread_mutex_init(mutex, &attr)
     pthread_mutexattr_destroy(&attr)
     return mutex
 }()
@@ -18,37 +18,18 @@ private var ptyLock: pthread_mutex_t = {
 private func withLock<T>(_ block: () throws -> T) rethrows -> T {
     var mask = sigset_t()
     var oldMask = sigset_t()
-    sigemptyset(&mask)
-    sigaddset(&mask, SIGWINCH)
-    
-    // Block SIGWINCH
+    sigfillset(&mask)
+
+    // Block all signals
     pthread_sigmask(SIG_BLOCK, &mask, &oldMask)
-    
-    pthread_mutex_lock(&ptyLock)
+
+    pthread_mutex_lock(ptyLock)
     defer {
-        pthread_mutex_unlock(&ptyLock)
+        pthread_mutex_unlock(ptyLock)
         // Restore signal mask
         pthread_sigmask(SIG_SETMASK, &oldMask, nil)
     }
     return try block()
-}
-
-private func withLock<T>(_ block: () -> T) -> T {
-    var mask = sigset_t()
-    var oldMask = sigset_t()
-    sigemptyset(&mask)
-    sigaddset(&mask, SIGWINCH)
-    
-    // Block SIGWINCH
-    pthread_sigmask(SIG_BLOCK, &mask, &oldMask)
-    
-    pthread_mutex_lock(&ptyLock)
-    defer {
-        pthread_mutex_unlock(&ptyLock)
-        // Restore signal mask
-        pthread_sigmask(SIG_SETMASK, &oldMask, nil)
-    }
-    return block()
 }
 
 // MARK: - Shared State
