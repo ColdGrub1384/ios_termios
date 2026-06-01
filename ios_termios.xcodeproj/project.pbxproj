@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		B51A5DD62EB1470D003811AF /* ios_termios.h in Headers */ = {isa = PBXBuildFile; fileRef = B5210F132EABC43500280D7B /* ios_termios.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		B547238F2EAADBE600FC3A69 /* ios_termios.swift in Sources */ = {isa = PBXBuildFile; fileRef = B547238E2EAADBE600FC3A69 /* ios_termios.swift */; };
+		B5ADCF622FCD67C700C2CEA3 /* ios_termios.c in Sources */ = {isa = PBXBuildFile; fileRef = B5ADCF612FCD67C700C2CEA3 /* ios_termios.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -16,7 +17,17 @@
 		B52828C02F0377E600F4726C /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		B54723842EAADBB300FC3A69 /* ios_termios.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = ios_termios.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		B547238E2EAADBE600FC3A69 /* ios_termios.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ios_termios.swift; path = Sources/ios_termios/ios_termios.swift; sourceTree = "<group>"; };
+		B5ADCF612FCD67C700C2CEA3 /* ios_termios.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = ios_termios.c; path = Sources/ios_termios_c/ios_termios.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		B5ADCF542FCD59AF00C2CEA3 /* include */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			name = include;
+			path = Sources/ios_termios_c/include;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		B54723812EAADBB300FC3A69 /* Frameworks */ = {
@@ -35,6 +46,8 @@
 				B52828C02F0377E600F4726C /* README.md */,
 				B547238E2EAADBE600FC3A69 /* ios_termios.swift */,
 				B5210F132EABC43500280D7B /* ios_termios.h */,
+				B5ADCF612FCD67C700C2CEA3 /* ios_termios.c */,
+				B5ADCF542FCD59AF00C2CEA3 /* include */,
 				B54723852EAADBB300FC3A69 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -74,6 +87,9 @@
 			);
 			dependencies = (
 			);
+			fileSystemSynchronizedGroups = (
+				B5ADCF542FCD59AF00C2CEA3 /* include */,
+			);
 			name = ios_termios;
 			packageProductDependencies = (
 			);
@@ -93,7 +109,7 @@
 				TargetAttributes = {
 					B54723832EAADBB300FC3A69 = {
 						CreatedOnToolsVersion = 26.0.1;
-						LastSwiftMigration = 2600;
+						LastSwiftMigration = 2640;
 					};
 				};
 			};
@@ -132,6 +148,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B547238F2EAADBE600FC3A69 /* ios_termios.swift in Sources */,
+				B5ADCF622FCD67C700C2CEA3 /* ios_termios.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -306,8 +323,10 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INCLUDE_PATHS = "\"$(SRCROOT)/Sources/ios_termios_c/include\"";
 				SWIFT_INSTALL_MODULE = YES;
 				SWIFT_INSTALL_OBJC_HEADER = NO;
+				SWIFT_OBJC_BRIDGING_HEADER = "";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
@@ -361,8 +380,10 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INCLUDE_PATHS = "\"$(SRCROOT)/Sources/ios_termios_c/include\"";
 				SWIFT_INSTALL_MODULE = YES;
 				SWIFT_INSTALL_OBJC_HEADER = NO;
+				SWIFT_OBJC_BRIDGING_HEADER = "";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,3,4,7";

@@ -1,0 +1,4 @@
+module ios_termios_c {
+    header "ios_termios_c.h"
+    export *
+}

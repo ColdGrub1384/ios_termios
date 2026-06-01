@@ -12,8 +12,12 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "ios_termios",
+            name: "ios_termios_c",
+            path: "Sources/ios_termios_c"
         ),
-
+        .target(
+            name: "ios_termios",
+            dependencies: ["ios_termios_c"]
+        ),
     ]
 )

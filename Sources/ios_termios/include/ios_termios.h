@@ -29,6 +29,8 @@ extern int ios_tcsetwinsize(int fd, const struct winsize *w);
 extern int ios_tcgetattr(int fd, struct termios *termios_p);
 extern int ios_tcsetattr(int fd, int optional_actions, const struct termios *termios_p);
 
+extern int libc_ioctl(int fd, unsigned long request, void *arg);
+
 extern int ios_tcsendbreak(int fd, int duration);
 extern int ios_tcdrain(int fd);
 extern int ios_tcflush(int fd, int queue_selector);

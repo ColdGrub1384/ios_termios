@@ -1,5 +1,6 @@
 import Foundation
 import Darwin
+import ios_termios_c
 
 // Mutex for all shared state.
 // We use a pthread_mutex instead of a serial queue because DispatchQueue.sync is not signal-safe.
@@ -257,6 +258,9 @@ public func ios_fds_from_ttyname_r(_ name: UnsafePointer<CChar>, _ out: UnsafeMu
 
 @_cdecl("ios_winsize_ioctl")
 public func ios_winsize_ioctl(_ fd: Int32, _ request: UInt, _ arg: UnsafeMutableRawPointer?) -> Int32 {
+    if !isATTY(fd) {
+        return libc_ioctl(fd, UInt(request), arg)
+    }
     switch request {
     case TIOCGWINSZ:
         guard let dest = arg else { errno = EINVAL; return -1 }
@@ -301,7 +305,11 @@ public func ios_close(_ fd: Int32) -> Int32 {
 public func ios_ttyname_r(_ fd: Int32, _ buf: UnsafeMutablePointer<CChar>!, _ len: Int) -> Int32 {
     guard let buf = buf, len > 0 else { return EINVAL }
     let name: String
-    do { name = try ptyName(fd: fd) } catch { return ENOTTY }
+    do {
+        name = try ptyName(fd: fd)
+    } catch {
+        return ttyname_r(fd, buf, len)
+    }
     return name.withCString { cstr in
         let needed = strlen(cstr) + 1
         if needed > len { return ERANGE }
@@ -312,32 +320,36 @@ public func ios_ttyname_r(_ fd: Int32, _ buf: UnsafeMutablePointer<CChar>!, _ le
 
 @_cdecl("ios_tcsendbreak")
 public func ios_tcsendbreak(_ fd: Int32, _ duration: Int32) -> Int32 {
-    guard isATTY(fd) else { errno = ENOTTY; return -1 }
+    guard isATTY(fd) else { return tcsendbreak(fd, duration) }
     return 0
 }
 
 @_cdecl("ios_tcdrain")
 public func ios_tcdrain(_ fd: Int32) -> Int32 {
-    guard isATTY(fd) else { errno = ENOTTY; return -1 }
+    guard isATTY(fd) else { return tcdrain(fd) }
     return 0
 }
 
 @_cdecl("ios_tcflush")
 public func ios_tcflush(_ fd: Int32, _ queue_selector: Int32) -> Int32 {
-    guard isATTY(fd) else { errno = ENOTTY; return -1 }
+    guard isATTY(fd) else { return tcflush(fd, queue_selector) }
     return 0
 }
 
 @_cdecl("ios_tcflow")
 public func ios_tcflow(_ fd: Int32, _ action: Int32) -> Int32 {
-    guard isATTY(fd) else { errno = ENOTTY; return -1 }
+    guard isATTY(fd) else { return tcflow(fd, action) }
     return 0
 }
 
 @_cdecl("ios_tcgetattr")
 public func ios_tcgetattr(_ fd: Int32, _ termios_p: UnsafeMutablePointer<termios>?) -> Int32 {
     let name: String
-    do { name = try ptyName(fd: fd) } catch { errno = ENOTTY; return -1 }
+    do {
+        name = try ptyName(fd: fd)
+    } catch {
+        return tcgetattr(fd, termios_p)
+    }
     let t = withLock { _termios[name] ?? defaultTermios }
     termios_p?.pointee = t
     return 0
@@ -346,7 +358,11 @@ public func ios_tcgetattr(_ fd: Int32, _ termios_p: UnsafeMutablePointer<termios
 @_cdecl("ios_tcsetattr")
 public func ios_tcsetattr(_ fd: Int32, _ optional_actions: Int32, _ termios_p: UnsafeMutablePointer<termios>?) -> Int32 {
     let name: String
-    do { name = try ptyName(fd: fd) } catch { errno = ENOTTY; return -1 }
+    do {
+        name = try ptyName(fd: fd)
+    } catch {
+        return tcsetattr(fd, optional_actions, termios_p)
+    }
     withLock { _termios[name] = termios_p?.pointee }
     return 0
 }
@@ -354,7 +370,12 @@ public func ios_tcsetattr(_ fd: Int32, _ optional_actions: Int32, _ termios_p: U
 @_cdecl("ios_tcgetwinsize")
 public func ios_tcgetwinsize(_ fd: Int32, _ winsize_p: UnsafeMutablePointer<winsize>?) -> Int32 {
     let name: String
-    do { name = try ptyName(fd: fd) } catch { errno = ENOTTY; return -1 }
+    do {
+        name = try ptyName(fd: fd)
+    } catch {
+        guard let pointer = winsize_p else { return 0 }
+        return libc_ioctl(fd, UInt(TIOCGWINSZ), UnsafeMutableRawPointer(pointer))
+    }
     let w = withLock { _winsize[name] ?? winsize(ws_row: 0, ws_col: 0, ws_xpixel: 0, ws_ypixel: 0) }
     winsize_p?.pointee = w
     return 0
@@ -363,7 +384,12 @@ public func ios_tcgetwinsize(_ fd: Int32, _ winsize_p: UnsafeMutablePointer<wins
 @_cdecl("ios_tcsetwinsize")
 public func ios_tcsetwinsize(_ fd: Int32, _ optional_actions: Int32, _ winsize_p: UnsafeMutablePointer<winsize>?) -> Int32 {
     let name: String
-    do { name = try ptyName(fd: fd) } catch { errno = ENOTTY; return -1 }
+    do {
+        name = try ptyName(fd: fd)
+    } catch {
+        guard let pointer = winsize_p else { return -1 }
+        return libc_ioctl(fd, UInt(TIOCSWINSZ), UnsafeMutableRawPointer(pointer))
+    }
     withLock { _winsize[name] = winsize_p?.pointee }
     return 0
 }
