@@ -1,6 +1,6 @@
 import Foundation
 import Darwin
-import ios_termios_c
+@_implementationOnly import ios_termios_c
 
 // Mutex for all shared state.
 // We use a pthread_mutex instead of a serial queue because DispatchQueue.sync is not signal-safe.
