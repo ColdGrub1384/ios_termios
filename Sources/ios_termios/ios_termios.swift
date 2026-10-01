@@ -295,9 +295,12 @@ public func ios_dup2(_ fd: Int32, _ newfd: Int32) -> Int32 {
 
 @_cdecl("ios_close")
 public func ios_close(_ fd: Int32) -> Int32 {
+    let name = try? ptyName(fd: fd)
     withLock {
         childPtys[fd] = nil
-        ptys[fd] = nil
+        if let name {
+            ptys[name] = nil
+        }
     }
     return close(fd)
 }
