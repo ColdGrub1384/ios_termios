@@ -375,7 +375,7 @@ public func ios_tcgetwinsize(_ fd: Int32, _ winsize_p: UnsafeMutablePointer<wins
     do {
         name = try ptyName(fd: fd)
     } catch {
-        guard let pointer = winsize_p else { return 0 }
+        guard let pointer = winsize_p else { return -1 }
         return libc_ioctl(fd, UInt(TIOCGWINSZ), UnsafeMutableRawPointer(pointer))
     }
     let w = withLock { _winsize[name] ?? winsize(ws_row: 0, ws_col: 0, ws_xpixel: 0, ws_ypixel: 0) }
